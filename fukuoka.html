@@ -11,7 +11,7 @@
     <!-- 2. 引入 Babel (讓瀏覽器看懂 React JSX) -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- 3. 設定 Import Map (讓瀏覽器知道去哪裡抓 React 和 Lucide 圖示庫) -->
+    <!-- 3. 設定 Import Map -->
     <script type="importmap">
     {
         "imports": {
@@ -53,24 +53,21 @@
 <body>
     <div id="root"></div>
 
-    <!-- 4. 您的 React 程式碼 (type="text/babel" data-type="module") -->
+    <!-- 4. 您的 React 程式碼 -->
     <script type="text/babel" data-type="module">
         import React, { useState, useRef, useEffect } from 'react';
         import { createRoot } from 'react-dom/client';
         import { 
             MapPin, Clock, ExternalLink, Utensils, Bed, Car, 
             ShoppingBag, Camera, Plus, Trash2, GripVertical, 
-            Save, X, Link as LinkIcon, Navigation 
+            Save, X, Link as LinkIcon, Navigation, RotateCcw
         } from 'lucide-react';
 
         // === 圖片設定區 ===
-        // Google Drive 圖片連結常常會失效 (403 Forbidden)。
-        // 如果這個連結無法顯示，建議將圖片上傳到 https://postimages.org/ 或 https://imgur.com/ 取得直接連結 (.jpg/.png結尾)。
         const BANNER_IMAGE_URL = "https://lh3.googleusercontent.com/d/1mo1MaLdcHTVJ8KnhX4ijr23dY2QGC7GY"; 
-        // 備註：我將您的 drive.google.com/uc 連結轉換成了 lh3.googleusercontent.com 格式，這通常比較穩定。
 
         // -----------------------------------------------------------------------------
-        // 初始數據
+        // 初始數據 (這是預設值，如果 LocalStorage 有資料會被覆蓋)
         // -----------------------------------------------------------------------------
         const INITIAL_DATA = [
         // 10月26日 (月)
@@ -78,49 +75,58 @@
         { id: '2', date: '10月26日', time: '16:00', category: '移動', title: '福岡空港→祇園', link: '', memo: '福岡地下鉄空港線(姪浜行)，從5出站' },
         { id: '3', date: '10月26日', time: '17:30', category: '宿泊', title: 'EN HOTEL Hakata', link: 'https://maps.app.goo.gl/NjExH8YtCALANrc2A', memo: '' },
         { id: '4', date: '10月26日', time: '17:40', category: '移動', title: '櫛田神社前→天神南', link: '', memo: '' },
-        { id: '5', date: '10月26日', time: '18:00', category: '食事', title: 'とんかつ わか葉', link: 'https://maps.app.goo.gl/QvWAqUibt5jgBnR59', memo: '宵夜 (10:30-14:30 17:00-20:45)' },
+        { id: '5', date: '10月26日', time: '18:00', category: '食事', title: 'とんかつ わか葉', link: 'https://maps.app.goo.gl/QvWAqUibt5jgBnR59', memo: '營業時間：10:30-14:30 17:00-20:45' },
 
         // 10月27日 (火)
-        { id: '6', date: '10月27日', time: '8:00', category: '移動', title: '博多駅貸切バス専用駐車場', link: '', memo: '' },
+        { id: '6', date: '10月27日', time: '8:00', category: '移動', title: '博多駅貸切バス専用駐車場', link: 'https://maps.app.goo.gl/vvazSFqPyobwaX6k7', memo: '' },
         { id: '7', date: '10月27日', time: '9:05', category: '觀光', title: '雷山千如寺大悲王院', link: 'https://maps.app.goo.gl/UBBagCVPfjCKPxMr8', memo: '要買Fun Tour 九州巴士' },
         { id: '8', date: '10月27日', time: '11:35', category: '觀光', title: '松月乘船場', link: 'https://maps.app.goo.gl/4rZCWHjYj6ckn9tn6', memo: '柳川觀光開發(株)' },
-        { id: '9', date: '10月27日', time: '12:35', category: '食事', title: '清柳食産', link: 'https://maps.app.goo.gl/WAdpLeQJgsJXMmjA8', memo: '替代方案 (公休:水、日)' },
+        { id: '9', date: '10月27日', time: '12:35', category: '食事', title: '清柳食産', link: 'https://maps.app.goo.gl/WAdpLeQJgsJXMmjA8', memo: '營業時間：11:30 - 14:30，公休:水、日' },
         { id: '10', date: '10月27日', time: '14:55', category: '觀光', title: '太宰府天滿宮', link: 'https://maps.app.goo.gl/o6oDHKprumnZFD3R7', memo: '周邊美食' },
         { id: '11', date: '10月27日', time: '16:45', category: '觀光', title: '寶滿宮 竈門神社', link: 'https://maps.app.goo.gl/uqrcG1tqVnGoXPWbA', memo: '' },
-        { id: '12', date: '10月27日', time: '19:00', category: '食事', title: 'とり田 博多本店', link: 'https://maps.app.goo.gl/Wb11R8vxjW6r2XEe9', memo: '' },
+        { id: '12', date: '10月27日', time: '19:00', category: '食事', title: 'とり田 博多本店', link: 'https://maps.app.goo.gl/Wb11R8vxjW6r2XEe9', memo: '營業時間：11:30 - 16:00 17:00 - 23:00' },
 
         // 10月28日 (水)
-        { id: '13', date: '10月28日', time: '8:00', category: '食事', title: '麺屋 いしヰ', link: 'https://maps.app.goo.gl/MB52X8UQCZT16pU4A', memo: '前兩週預定' },
+        { id: '13', date: '10月28日', time: '8:00', category: '食事', title: '麺屋 いしヰ', link: 'https://maps.app.goo.gl/MB52X8UQCZT16pU4A', memo: '營業時間：08:00 - 16:00，前兩週預定' },
         { id: '14', date: '10月28日', time: '9:00', category: '觀光', title: '櫛田神社', link: 'https://maps.app.goo.gl/mtghzfxJ3yxLpSQ59', memo: '' },
         { id: '15', date: '10月28日', time: '9:45', category: '移動', title: '櫛田神社前→博多', link: '', memo: '' },
         { id: '16', date: '10月28日', time: '10:00', category: '買物', title: '博多阪急', link: 'https://maps.app.goo.gl/xNj1fcEPsyj7NqSU9', memo: '' },
         { id: '17', date: '10月28日', time: '10:00', category: '買物', title: 'LOPIA 博多友都八喜店', link: 'https://maps.app.goo.gl/d3FaqJY3g8iY1XXx8', memo: '' },
-        { id: '18', date: '10月28日', time: '12:00', category: '食事', title: 'ひょうたんの回転寿司', link: 'https://maps.app.goo.gl/Z1f9X5d16yLcg5to7', memo: '11:00 - 21:00' },
-        { id: '19', date: '10月28日', time: '13:30', category: '買物', title: '天神商圈', link: 'https://www.google.com/maps/d/u/0/edit?mid=1PwbNItMBimR0RkTOnauktSvrmj63OkE&usp=sharing', memo: '' },
-        { id: '20', date: '10月28日', time: '17:00', category: '移動', title: '前往 Lalaport福岡', link: 'https://maps.app.goo.gl/fLnwDzqyWMU8ri9B6', memo: '天神大丸前發車' },
-        { id: '21', date: '10月28日', time: '17:43', category: '買物', title: 'LaLaport 福岡', link: 'https://maps.app.goo.gl/vH1fHCuazpTYgJDn9', memo: '' },
-        { id: '22', date: '10月28日', time: '20:00', category: '食事', title: '博多シーフードうお田', link: 'https://maps.app.goo.gl/1swqRAikHfRMPqXT8', memo: '' },
+        { id: '18', date: '10月28日', time: '11:00', category: '移動', title: '博多→櫛田神社前', link: '', memo: '' },
+        { id: '19', date: '10月28日', time: '11:20', category: '移動', title: '櫛田神社前→天神南', link: '', memo: '' },
+        { id: '20', date: '10月28日', time: '12:00', category: '食事', title: 'ひょうたんの回転寿司', link: 'https://maps.app.goo.gl/Z1f9X5d16yLcg5to7', memo: '營業時間：11:00 - 21:00' },
+        { id: '21', date: '10月28日', time: '13:30', category: '買物', title: '天神商圈', link: 'https://www.google.com/maps/d/u/0/edit?mid=1PwbNItMBimR0RkTOnauktSvrmj63OkE&usp=sharing', memo: '' },
+        { id: '22', date: '10月28日', time: '17:00', category: '移動', title: '天神大丸前→Lalaport福岡', link: 'https://maps.app.goo.gl/fLnwDzqyWMU8ri9B6', memo: '時刻表https://www.navitime.co.jp/diagram/bus/00085401/00022210/0/' },
+        { id: '23', date: '10月28日', time: '17:43', category: '買物', title: 'LaLaport 福岡', link: 'https://maps.app.goo.gl/vH1fHCuazpTYgJDn9', memo: '' },
+        { id: '24', date: '10月28日', time: '19:19', category: '移動', title: 'Lalaport福岡→春吉', link: '', memo: '時刻表https://www.navitime.co.jp/diagram/bus/00091093/00022210/1/' }, 
+        { id: '25', date: '10月28日', time: '20:00', category: '食事', title: '博多シーフードうお田', link: 'https://maps.app.goo.gl/1swqRAikHfRMPqXT8', memo: '' },
 
         // 10月29日 (木)
-        { id: '23', date: '10月29日', time: '7:00', category: '食事', title: 'DACOMECCA', link: 'https://maps.app.goo.gl/2nMJPmHuzDismBQM6', memo: '' },
-        { id: '24', date: '10月29日', time: '8:30', category: '移動', title: '博多→門司港', link: '', memo: '博多→小倉（新幹線），小倉→門司港 (Pass)' },
-        { id: '25', date: '10月29日', time: '9:00', category: '觀光', title: '関門海峡ミュージアム', link: 'https://www.google.com/maps?cid=18212556726394048423', memo: '北九州周遊pass' },
-        { id: '26', date: '10月29日', time: '10:00', category: '觀光', title: '門司港レトロ展望室', link: 'https://maps.app.goo.gl/y8YYASgCNzWSY1kJ8', memo: '北九州周遊pass' },
-        { id: '27', date: '10月29日', time: '10:30', category: '觀光', title: '和布刈神社', link: 'https://www.google.com/maps?cid=12821316231491149772', memo: '' },
-        { id: '28', date: '10月29日', time: '11:30', category: '食事', title: '下関 唐戸市場', link: 'https://maps.app.goo.gl/HHpj4tkK4AfchyxM7', memo: '10:00 - 15:00' },
-        { id: '29', date: '10月29日', time: '13:00', category: '觀光', title: '海峡プラザ', link: 'https://maps.app.goo.gl/DNsGw8f6tPRCDKXQ6', memo: '伴手禮小吃' },
-        { id: '30', date: '10月29日', time: '14:00', category: '買物', title: 'Aruaru City', link: 'https://maps.app.goo.gl/CAymEorcxp1upN7V7', memo: '' },
-        { id: '31', date: '10月29日', time: '15:00', category: '觀光', title: '小倉城', link: 'https://maps.app.goo.gl/gC8GK9sfqSByCvDd8', memo: '北九州周遊pass' },
-        { id: '32', date: '10月29日', time: '17:25', category: '移動', title: '接駁車→皿倉山', link: 'https://maps.app.goo.gl/B2M9SUyakKSLbLhe8', memo: '八幡站搭車' },
-        { id: '33', date: '10月29日', time: '17:45', category: '觀光', title: '皿倉山夜景', link: '', memo: 'ケーブルカー' },
-        { id: '34', date: '10月29日', time: '21:30', category: '食事', title: '肉いち 博多店', link: 'https://maps.app.goo.gl/tW2M4KA1tEDXbHVH6', memo: '2個月前要網路訂位' },
+        { id: '26', date: '10月29日', time: '7:00', category: '食事', title: 'DACOMECCA', link: 'https://maps.app.goo.gl/2nMJPmHuzDismBQM6', memo: '' },
+        { id: '27', date: '10月29日', time: '8:30', category: '移動', title: '博多→門司港', link: '', memo: '博多→小倉（新幹線），小倉→門司港 (北九州周遊Pass)' },
+        { id: '28', date: '10月29日', time: '9:00', category: '觀光', title: '関門海峡ミュージアム', link: 'https://www.google.com/maps?cid=18212556726394048423', memo: '北九州周遊pass' },
+        { id: '29', date: '10月29日', time: '10:00', category: '觀光', title: '門司港レトロ展望室', link: 'https://maps.app.goo.gl/y8YYASgCNzWSY1kJ8', memo: '北九州周遊pass' },
+        { id: '30', date: '10月29日', time: '10:30', category: '觀光', title: '和布刈神社', link: 'https://www.google.com/maps?cid=12821316231491149772', memo: '' },
+        { id: '31', date: '10月29日', time: '11:30', category: '食事', title: '下関 唐戸市場', link: 'https://maps.app.goo.gl/HHpj4tkK4AfchyxM7', memo: '營業時間：10:00 - 15:00' },
+        { id: '32', date: '10月29日', time: '13:00', category: '觀光', title: '海峡プラザ', link: 'https://maps.app.goo.gl/DNsGw8f6tPRCDKXQ6', memo: '伴手禮小吃' },
+        { id: '33', date: '10月29日', time: '13:30', category: '移動', title: '門司港→小倉', link: '', memo: '北九州周遊pass' },
+        { id: '34', date: '10月29日', time: '14:00', category: '買物', title: 'Aruaru City', link: 'https://maps.app.goo.gl/CAymEorcxp1upN7V7', memo: '' },
+        { id: '35', date: '10月29日', time: '14:30', category: '觀光', title: '八坂神社', link: 'https://maps.app.goo.gl/YTiyDgXMqiisaVBa9', memo: '' },
+        { id: '36', date: '10月29日', time: '15:00', category: '觀光', title: '小倉城', link: 'https://maps.app.goo.gl/gC8GK9sfqSByCvDd8', memo: '北九州周遊pass' },
+        { id: '37', date: '10月29日', time: '16:30', category: '移動', title: '西小倉→八幡', link: '', memo: '北九州周遊pass' },
+        { id: '38', date: '10月29日', time: '17:25', category: '移動', title: '接駁車→皿倉山', link: 'https://maps.app.goo.gl/B2M9SUyakKSLbLhe8', memo: '時刻表https://www.sarakurayama-cablecar.co.jp/shuttlebus/' },
+        { id: '39', date: '10月29日', time: '17:45', category: '觀光', title: '皿倉山夜景', link: '', memo: 'ケーブルカー' },
+        { id: '40', date: '10月29日', time: '19:30', category: '移動', title: '八幡→博多', link: '', memo: '' },
+        { id: '41', date: '10月29日', time: '21:30', category: '食事', title: 'にく屋 肉いち  博多店', link: 'https://maps.app.goo.gl/tW2M4KA1tEDXbHVH6', memo: '營業時間：16:00–24:00，2個月前要網路訂位' },
 
         // 10月30日 (金)
-        { id: '35', date: '10月30日', time: '8:00', category: '食事', title: '炉端ノいとおかし', link: 'https://maps.app.goo.gl/8tfxDmg16DShtsKJ8', memo: '近1個月要網路訂位' },
-        { id: '36', date: '10月30日', time: '9:30', category: '食事', title: 'パンストック 天神店', link: 'https://maps.app.goo.gl/TWVyCXm3144BsL6s7', memo: '' },
-        { id: '37', date: '10月30日', time: '10:00', category: '買物', title: '博多運河城', link: 'https://maps.app.goo.gl/A5dHucXhqsb9vDZU6', memo: '' },
-        { id: '38', date: '10月30日', time: '12:30', category: '食事', title: '博多元氣一杯!!', link: 'https://www.google.com/maps?cid=4563141796542890085', memo: '' },
-        { id: '39', date: '10月30日', time: '14:30', category: '移動', title: '福岡國際機場', link: '', memo: 'AK1511 回家' },
+        { id: '42', date: '10月30日', time: '7:45', category: '移動', title: '櫛田神社前→六本松', link: '', memo: '' },
+        { id: '43', date: '10月30日', time: '8:00', category: '食事', title: '炉端ノいとおかし', link: 'https://maps.app.goo.gl/8tfxDmg16DShtsKJ8', memo: '營業時間：8:00 - 14:00，近1個月要網路訂位' },
+        { id: '44', date: '10月30日', time: '9:00', category: '移動', title: '六本松→天神南', link: '', memo: '' },
+        { id: '45', date: '10月30日', time: '9:30', category: '食事', title: 'パンストック 天神店', link: 'https://maps.app.goo.gl/TWVyCXm3144BsL6s7', memo: '營業時間：8:00–19:00，定休日：月曜.第1･第3火曜' },
+        { id: '46', date: '10月30日', time: '10:00', category: '買物', title: '博多運河城', link: 'https://maps.app.goo.gl/A5dHucXhqsb9vDZU6', memo: '' },
+        { id: '47', date: '10月30日', time: '12:30', category: '食事', title: '博多元氣一杯!!', link: 'https://www.google.com/maps?cid=4563141796542890085', memo: '營業時間：11:00 - 20:00' },
+        { id: '48', date: '10月30日', time: '14:30', category: '移動', title: '福岡國際機場', link: '', memo: 'AK1511 回家' },
         ];
 
         const WEEKDAYS = {
@@ -298,10 +304,31 @@
         // -----------------------------------------------------------------------------
         const FukuokaSoloTripApp = () => {
         const [activeDate, setActiveDate] = useState('10月26日');
-        const [items, setItems] = useState(INITIAL_DATA);
-        const [categories, setCategories] = useState(CATEGORIES);
+        
+        // --- 修正1: 讀取 LocalStorage ---
+        // 初始狀態會先檢查瀏覽器有沒有 'fukuoka_trip_data'，沒有才用 INITIAL_DATA
+        const [items, setItems] = useState(() => {
+            const savedData = localStorage.getItem('fukuoka_trip_data');
+            return savedData ? JSON.parse(savedData) : INITIAL_DATA;
+        });
+
+        const [categories, setCategories] = useState(() => {
+            const savedCats = localStorage.getItem('fukuoka_trip_categories');
+            return savedCats ? JSON.parse(savedCats) : CATEGORIES;
+        });
+
         const [editingItem, setEditingItem] = useState(null);
         
+        // --- 修正2: 寫入 LocalStorage ---
+        // 當 items 或 categories 有變動時，自動存入瀏覽器
+        useEffect(() => {
+            localStorage.setItem('fukuoka_trip_data', JSON.stringify(items));
+        }, [items]);
+
+        useEffect(() => {
+            localStorage.setItem('fukuoka_trip_categories', JSON.stringify(categories));
+        }, [categories]);
+
         // Drag & Drop State
         const dragItem = useRef();
         const dragOverItem = useRef();
@@ -384,6 +411,17 @@
             };
             setItems([...items, newItem]);
             setEditingItem(newItem);
+        };
+
+        // Logic: Reset Data
+        const handleResetData = () => {
+            if (confirm('確定要重置所有行程嗎？這將會刪除您所有的修改，變回預設狀態。')) {
+                localStorage.removeItem('fukuoka_trip_data');
+                localStorage.removeItem('fukuoka_trip_categories');
+                setItems(INITIAL_DATA);
+                setCategories(CATEGORIES);
+                alert('行程已重置');
+            }
         };
 
         const filteredItems = items.filter(item => item.date === activeDate);
@@ -519,6 +557,16 @@
                     })}
                 </div>
                 )}
+                
+                {/* Reset Button (New) */}
+                <div className="mt-12 mb-24 flex justify-center">
+                    <button 
+                        onClick={handleResetData}
+                        className="text-xs text-gray-600 hover:text-red-400 flex items-center gap-1 transition-colors border border-white/5 px-3 py-1.5 rounded-full hover:border-red-400/30"
+                    >
+                        <RotateCcw size={12} /> 重置所有行程至預設值
+                    </button>
+                </div>
             </div>
 
             {/* 4. Floating Action Button */}
