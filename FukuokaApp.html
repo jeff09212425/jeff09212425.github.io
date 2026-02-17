@@ -1,389 +1,536 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>福岡獨旅</title>
+import React, { useState, useRef, useEffect } from 'react';
+import { 
+  MapPin, Clock, ExternalLink, Utensils, Bed, Car, 
+  ShoppingBag, Camera, Plus, Trash2, GripVertical, 
+  Save, X, Link as LinkIcon, Navigation 
+} from 'lucide-react';
+
+/* === 圖片設定區 ===
+  1. 如果您要用本機圖片：
+     請將照片放在跟此 HTML 檔同一個資料夾，並將下方網址改成檔名，例如：
+     const BANNER_IMAGE_URL = './my-photo.jpg';
+
+  2. 如果您要用 Google Drive 圖片：
+     請將分享連結轉為直連格式 (https://drive.google.com/uc?export=view&id=您的ID)
+*/
+const BANNER_IMAGE_URL = "https://drive.google.com/uc?export=view&id=1mo1MaLdcHTVJ8KnhX4ijr23dY2QGC7GY";
+
+
+/* 字體引入 (模擬 Google Fonts) 
+  請注意：實際儲存為 HTML 時，建議在 head 引入:
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+*/
+const FontStyles = () => (
+  <style>{`
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;500;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap');
     
-    <!-- === PWA 設定 (Android 核心修改) === -->
-    <meta name="theme-color" content="#121212">
-    <meta name="mobile-web-app-capable" content="yes">
+    :root {
+      --font-serif: 'Noto Serif JP', serif;
+      --font-sans: 'Noto Sans JP', sans-serif;
+      --bg-dark: #121212;
+      --bg-card: #1e1e1e;
+      --text-main: #e0e0e0;
+      --text-muted: #a0a0a0;
+      --accent-gold: #c5a059;
+    }
     
-    <!-- iOS 設定 -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="福岡獨旅">
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+    }
+
+    .font-serif { font-family: var(--font-serif); }
+    .text-gold { color: var(--accent-gold); }
+    .border-gold { border-color: var(--accent-gold); }
     
-    <!-- App Icon (SVG) -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23121212%22/><text y=%22.9em%22 font-size=%2290%22>⛩️</text></svg>">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23121212%22/><text y=%22.9em%22 font-size=%2290%22>⛩️</text></svg>">
-
-    <!-- === 內嵌 Manifest (讓 Android 識別為 App 的關鍵) === -->
-    <link rel="manifest" href='data:application/manifest+json,{"name":"福岡獨旅","short_name":"福岡獨旅","start_url":".","display":"standalone","background_color":"#121212","theme_color":"#121212","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Crect width=%27100%27 height=%27100%27 fill=%27%23121212%27/%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E⛩️%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
-
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    /* PWA Safe Area */
+    .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
     
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Zen+Old+Mincho:wght@700&display=swap" rel="stylesheet">
-    
-    <!-- React -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    /* Hide scrollbar but keep functionality */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  `}</style>
+);
 
-    <!-- App Styles -->
-    <style>
-        :root {
-            --bg-body: #121212;
-            --brand-gold: #eeb947; 
-        }
+// -----------------------------------------------------------------------------
+// 初始數據
+// -----------------------------------------------------------------------------
+const INITIAL_DATA = [
+  // 10月26日 (月)
+  { id: '1', date: '10月26日', time: '12:40', category: '移動', title: '台北→福岡', link: '', memo: 'AK1510亞航' },
+  { id: '2', date: '10月26日', time: '16:00', category: '移動', title: '福岡空港→祇園', link: '', memo: '福岡地下鉄空港線(姪浜行)，從5出站' },
+  { id: '3', date: '10月26日', time: '17:30', category: '宿泊', title: 'EN HOTEL Hakata', link: 'https://maps.app.goo.gl/NjExH8YtCALANrc2A', memo: '' },
+  { id: '4', date: '10月26日', time: '17:40', category: '移動', title: '櫛田神社前→天神南', link: '', memo: '' },
+  { id: '5', date: '10月26日', time: '18:00', category: '食事', title: 'とんかつ わか葉', link: 'https://maps.app.goo.gl/QvWAqUibt5jgBnR59', memo: '宵夜 (10:30-14:30 17:00-20:45)' },
 
-        body { 
-            font-family: 'Noto Sans JP', sans-serif;
-            background-color: var(--bg-body);
-            color: #ffffff;
-            letter-spacing: 0.05em;
-            overscroll-behavior-y: none;
-            -webkit-tap-highlight-color: transparent;
-        }
+  // 10月27日 (火)
+  { id: '6', date: '10月27日', time: '8:00', category: '移動', title: '博多駅貸切バス専用駐車場', link: '', memo: '' },
+  { id: '7', date: '10月27日', time: '9:05', category: '觀光', title: '雷山千如寺大悲王院', link: 'https://maps.app.goo.gl/UBBagCVPfjCKPxMr8', memo: '要買Fun Tour 九州巴士' },
+  { id: '8', date: '10月27日', time: '11:35', category: '觀光', title: '松月乘船場', link: 'https://maps.app.goo.gl/4rZCWHjYj6ckn9tn6', memo: '柳川觀光開發(株)' },
+  { id: '9', date: '10月27日', time: '12:35', category: '食事', title: '清柳食産', link: 'https://maps.app.goo.gl/WAdpLeQJgsJXMmjA8', memo: '替代方案 (公休:水、日)' },
+  { id: '10', date: '10月27日', time: '14:55', category: '觀光', title: '太宰府天滿宮', link: 'https://maps.app.goo.gl/o6oDHKprumnZFD3R7', memo: '周邊美食' },
+  { id: '11', date: '10月27日', time: '16:45', category: '觀光', title: '寶滿宮 竈門神社', link: 'https://maps.app.goo.gl/uqrcG1tqVnGoXPWbA', memo: '' },
+  { id: '12', date: '10月27日', time: '19:00', category: '食事', title: 'とり田 博多本店', link: 'https://maps.app.goo.gl/Wb11R8vxjW6r2XEe9', memo: '' },
 
-        h1, h2, h3 { font-weight: 700; letter-spacing: 0.1em; }
-        .font-mincho { font-family: 'Zen Old Mincho', serif; }
-        .pt-safe-top { padding-top: env(safe-area-inset-top, 20px); }
-        .pb-safe-bottom { padding-bottom: env(safe-area-inset-bottom, 20px); }
-        
-        @keyframes slide-in {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-slide-in {
-          animation: slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-        }
+  // 10月28日 (水)
+  { id: '13', date: '10月28日', time: '8:00', category: '食事', title: '麺屋 いしヰ', link: 'https://maps.app.goo.gl/MB52X8UQCZT16pU4A', memo: '前兩週預定' },
+  { id: '14', date: '10月28日', time: '9:00', category: '觀光', title: '櫛田神社', link: 'https://maps.app.goo.gl/mtghzfxJ3yxLpSQ59', memo: '' },
+  { id: '15', date: '10月28日', time: '9:45', category: '移動', title: '櫛田神社前→博多', link: '', memo: '' },
+  { id: '16', date: '10月28日', time: '10:00', category: '買物', title: '博多阪急', link: 'https://maps.app.goo.gl/xNj1fcEPsyj7NqSU9', memo: '' },
+  { id: '17', date: '10月28日', time: '10:00', category: '買物', title: 'LOPIA 博多友都八喜店', link: 'https://maps.app.goo.gl/d3FaqJY3g8iY1XXx8', memo: '' },
+  { id: '18', date: '10月28日', time: '12:00', category: '食事', title: 'ひょうたんの回転寿司', link: 'https://maps.app.goo.gl/Z1f9X5d16yLcg5to7', memo: '11:00 - 21:00' },
+  { id: '19', date: '10月28日', time: '13:30', category: '買物', title: '天神商圈', link: 'https://www.google.com/maps/d/u/0/edit?mid=1PwbNItMBimR0RkTOnauktSvrmj63OkE&usp=sharing', memo: '' },
+  { id: '20', date: '10月28日', time: '17:00', category: '移動', title: '前往 Lalaport福岡', link: 'https://maps.app.goo.gl/fLnwDzqyWMU8ri9B6', memo: '天神大丸前發車' },
+  { id: '21', date: '10月28日', time: '17:43', category: '買物', title: 'LaLaport 福岡', link: 'https://maps.app.goo.gl/vH1fHCuazpTYgJDn9', memo: '' },
+  { id: '22', date: '10月28日', time: '20:00', category: '食事', title: '博多シーフードうお田', link: 'https://maps.app.goo.gl/1swqRAikHfRMPqXT8', memo: '' },
 
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
-        /* Input Styles */
-        input, textarea {
-            background-color: transparent !important;
-            border-bottom: 2px solid #444 !important;
-            border-top: none !important;
-            border-left: none !important;
-            border-right: none !important;
-            border-radius: 0 !important;
-            padding: 8px 0 !important;
-            color: #fff !important;
-            font-family: 'Noto Sans JP', sans-serif !important;
-            font-weight: 500;
-            transition: border-color 0.3s ease;
-        }
-        input:focus, textarea:focus {
-            outline: none !important;
-            border-bottom: 2px solid var(--brand-gold) !important;
-            ring: 0 !important;
-        }
-        
-        select {
-            background-color: #000 !important;
-            color: #fff !important;
-            border: 1px solid #444 !important;
-            border-radius: 4px !important;
-            padding: 8px 12px !important;
-            font-weight: bold !important;
-            -webkit-appearance: none;
-        }
-        
-        option { background-color: #000; color: #fff; padding: 10px; }
-        ::placeholder { color: #555; }
-    </style>
-</head>
-<body>
-    <div id="root"></div>
+  // 10月29日 (木)
+  { id: '23', date: '10月29日', time: '7:00', category: '食事', title: 'DACOMECCA', link: 'https://maps.app.goo.gl/2nMJPmHuzDismBQM6', memo: '' },
+  { id: '24', date: '10月29日', time: '8:30', category: '移動', title: '博多→門司港', link: '', memo: '博多→小倉（新幹線），小倉→門司港 (Pass)' },
+  { id: '25', date: '10月29日', time: '9:00', category: '觀光', title: '関門海峡ミュージアム', link: 'https://www.google.com/maps?cid=18212556726394048423', memo: '北九州周遊pass' },
+  { id: '26', date: '10月29日', time: '10:00', category: '觀光', title: '門司港レトロ展望室', link: 'https://maps.app.goo.gl/y8YYASgCNzWSY1kJ8', memo: '北九州周遊pass' },
+  { id: '27', date: '10月29日', time: '10:30', category: '觀光', title: '和布刈神社', link: 'https://www.google.com/maps?cid=12821316231491149772', memo: '' },
+  { id: '28', date: '10月29日', time: '11:30', category: '食事', title: '下関 唐戸市場', link: 'https://maps.app.goo.gl/HHpj4tkK4AfchyxM7', memo: '10:00 - 15:00' },
+  { id: '29', date: '10月29日', time: '13:00', category: '觀光', title: '海峡プラザ', link: 'https://maps.app.goo.gl/DNsGw8f6tPRCDKXQ6', memo: '伴手禮小吃' },
+  { id: '30', date: '10月29日', time: '14:00', category: '買物', title: 'Aruaru City', link: 'https://maps.app.goo.gl/CAymEorcxp1upN7V7', memo: '' },
+  { id: '31', date: '10月29日', time: '15:00', category: '觀光', title: '小倉城', link: 'https://maps.app.goo.gl/gC8GK9sfqSByCvDd8', memo: '北九州周遊pass' },
+  { id: '32', date: '10月29日', time: '17:25', category: '移動', title: '接駁車→皿倉山', link: 'https://maps.app.goo.gl/B2M9SUyakKSLbLhe8', memo: '八幡站搭車' },
+  { id: '33', date: '10月29日', time: '17:45', category: '觀光', title: '皿倉山夜景', link: '', memo: 'ケーブルカー' },
+  { id: '34', date: '10月29日', time: '21:30', category: '食事', title: '肉いち 博多店', link: 'https://maps.app.goo.gl/tW2M4KA1tEDXbHVH6', memo: '2個月前要網路訂位' },
 
-    <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+  // 10月30日 (金)
+  { id: '35', date: '10月30日', time: '8:00', category: '食事', title: '炉端ノいとおかし', link: 'https://maps.app.goo.gl/8tfxDmg16DShtsKJ8', memo: '近1個月要網路訂位' },
+  { id: '36', date: '10月30日', time: '9:30', category: '食事', title: 'パンストック 天神店', link: 'https://maps.app.goo.gl/TWVyCXm3144BsL6s7', memo: '' },
+  { id: '37', date: '10月30日', time: '10:00', category: '買物', title: '博多運河城', link: 'https://maps.app.goo.gl/A5dHucXhqsb9vDZU6', memo: '' },
+  { id: '38', date: '10月30日', time: '12:30', category: '食事', title: '博多元氣一杯!!', link: 'https://www.google.com/maps?cid=4563141796542890085', memo: '' },
+  { id: '39', date: '10月30日', time: '14:30', category: '移動', title: '福岡國際機場', link: '', memo: 'AK1511 回家' },
+];
 
-        // --- Icons ---
-        const Icon = ({ path, size = 18, className = "", fill = "none" }) => (
-            <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-                <path d={path} />
-            </svg>
-        );
+const WEEKDAYS = {
+  '10月26日': '月',
+  '10月27日': '火',
+  '10月28日': '水',
+  '10月29日': '木',
+  '10月30日': '金',
+};
 
-        const Icons = {
-            MapPin: (props) => <Icon {...props} path="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z M12 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6" />,
-            Plus: (props) => <Icon {...props} path="M12 5v14M5 12h14" />,
-            Settings: (props) => <Icon {...props} path="M3 12h18 M3 6h18 M3 18h18" />, 
-            Trash: (props) => <Icon {...props} path="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" />,
-            Edit: (props) => <Icon {...props} path="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7 M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />,
-            X: (props) => <Icon {...props} path="M18 6L6 18M6 6l12 12" />,
-            ChevronUp: (props) => <Icon {...props} path="M18 15l-6-6-6 6" />,
-            ChevronDown: (props) => <Icon {...props} path="M6 9l6 6 6-6" />,
-        };
+const CATEGORIES = [
+  { name: '移動', color: 'text-blue-400', bg: 'bg-blue-400/10', border: 'border-blue-400/30', icon: Car },
+  { name: '宿泊', color: 'text-indigo-400', bg: 'bg-indigo-400/10', border: 'border-indigo-400/30', icon: Bed },
+  { name: '食事', color: 'text-orange-400', bg: 'bg-orange-400/10', border: 'border-orange-400/30', icon: Utensils },
+  { name: '觀光', color: 'text-emerald-400', bg: 'bg-emerald-400/10', border: 'border-emerald-400/30', icon: Camera },
+  { name: '買物', color: 'text-pink-400', bg: 'bg-pink-400/10', border: 'border-pink-400/30', icon: ShoppingBag },
+  { name: '其他', color: 'text-gray-400', bg: 'bg-gray-400/10', border: 'border-gray-400/30', icon: MapPin },
+];
 
-        const TRIP_DATES_CONFIG = [
-            { date: '10/26', day: '月' }, { date: '10/27', day: '火' }, { date: '10/28', day: '水' }, { date: '10/29', day: '木' }, { date: '10/30', day: '金' },
-        ];
-        
-        const INITIAL_CATEGORIES = [
-          { id: 'cat1', name: '観光', color: 'text-white border-white' },
-          { id: 'cat2', name: '食事', color: 'text-yellow-400 border-yellow-400' },
-          { id: 'cat3', name: '買物', color: 'text-white border-white' },
-          { id: 'cat4', name: '宿泊', color: 'text-white border-white' },
-        ];
+// -----------------------------------------------------------------------------
+// 子組件
+// -----------------------------------------------------------------------------
 
-        const INITIAL_ITINERARY = [
-          { id: '1', date: '10/26', time: '09:00', title: '福岡機場 租車', category: 'cat4', location: 'https://goo.gl/maps/example', notes: '記得檢查護照與日文譯本駕照。', hours: '08:00 - 20:00', closed: '' },
-          { id: '2', date: '10/26', time: '10:30', title: '太宰府天滿宮', category: 'cat1', location: '', notes: '必吃梅枝餅！參道星巴克很有名。', hours: '06:00 - 19:00', closed: '無休' },
-          { id: '3', date: '10/26', time: '12:30', title: '暖暮拉麵', category: 'cat2', location: 'Danbo Ramen Dazaifu', notes: '如果排隊太長，改去一蘭。', hours: '11:00 - 22:00', closed: '不定休' },
-        ];
+const EditModal = ({ item, isOpen, onClose, onSave, onDelete, categories, setCategories }) => {
+  const [formData, setFormData] = useState(item);
+  const [newCatName, setNewCatName] = useState('');
+  const [isAddingCat, setIsAddingCat] = useState(false);
 
-        function App() {
-          const [currentDateObj, setCurrentDateObj] = useState(TRIP_DATES_CONFIG[0]);
-          const currentDate = currentDateObj.date;
+  useEffect(() => {
+    if (item) setFormData(item);
+  }, [item]);
 
-          const [items, setItems] = useState(() => {
-            try { return JSON.parse(localStorage.getItem('fukuoka_trip_items_nishiyama')) || INITIAL_ITINERARY; } catch (e) { return INITIAL_ITINERARY; }
-          });
-          const [categories, setCategories] = useState(() => {
-            try { return JSON.parse(localStorage.getItem('fukuoka_trip_categories_nishiyama')) || INITIAL_CATEGORIES; } catch (e) { return INITIAL_CATEGORIES; }
-          });
+  // 修復錯誤：確保在資料準備好之前不進行渲染，防止讀取 null 屬性
+  if (!isOpen || !formData) return null;
 
-          const [isEditing, setIsEditing] = useState(false);
-          const [showAddModal, setShowAddModal] = useState(false);
-          const [showCatModal, setShowCatModal] = useState(false);
-          const [editingItem, setEditingItem] = useState(null);
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleAddCategory = () => {
+    if (newCatName.trim()) {
+      setCategories([...categories, { 
+        name: newCatName, 
+        color: 'text-gold', 
+        bg: 'bg-yellow-500/10', 
+        border: 'border-yellow-500/30', 
+        icon: MapPin 
+      }]);
+      setFormData({ ...formData, category: newCatName });
+      setNewCatName('');
+      setIsAddingCat(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm p-0 sm:p-4 animate-in fade-in duration-200">
+      <div className="bg-[#1e1e1e] w-full max-w-md rounded-t-2xl sm:rounded-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        {/* Modal Header */}
+        <div className="flex justify-between items-center p-4 border-b border-white/10">
+          <h3 className="text-lg font-serif font-bold text-white">編輯行程</h3>
+          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full text-gray-400">
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Modal Body */}
+        <div className="p-5 space-y-5 overflow-y-auto custom-scrollbar">
           
-          const [formData, setFormData] = useState({ time: '', title: '', category: '', location: '', notes: '', hours: '', closed: '' });
-          const [newCatName, setNewCatName] = useState('');
-
-          useEffect(() => { localStorage.setItem('fukuoka_trip_items_nishiyama', JSON.stringify(items)); }, [items]);
-          useEffect(() => { localStorage.setItem('fukuoka_trip_categories_nishiyama', JSON.stringify(categories)); }, [categories]);
-
-          const currentItems = items.filter(item => item.date === currentDate);
-
-          const handleOpenLink = (loc) => {
-            if(!loc) return;
-            if (loc.startsWith('http') || loc.startsWith('goo.gl')) {
-                window.open(loc, '_blank');
-            } else {
-                const query = encodeURIComponent(loc);
-                window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
-            }
-          };
-
-          const deleteItem = (id) => { if (confirm('刪除此行程？')) setItems(items.filter(item => item.id !== id)); };
-
-          const moveItem = (index, direction) => {
-            const dayItems = [...currentItems];
-            if (direction === 'up' && index > 0) { [dayItems[index], dayItems[index - 1]] = [dayItems[index - 1], dayItems[index]]; }
-            else if (direction === 'down' && index < dayItems.length - 1) { [dayItems[index], dayItems[index + 1]] = [dayItems[index + 1], dayItems[index]]; }
-            const otherItems = items.filter(item => item.date !== currentDate);
-            setItems([...otherItems, ...dayItems]); 
-          };
-
-          const handleEditClick = (item) => { setEditingItem(item); setFormData({ ...item }); setShowAddModal(true); };
-          const handleAddNewClick = () => { setEditingItem(null); setFormData({ time: '09:00', title: '', category: categories[0]?.id || '', location: '', notes: '', hours: '', closed: '' }); setShowAddModal(true); };
-
-          const handleTimeChange = (type, val) => {
-             let [h, m] = formData.time ? formData.time.split(':') : ['09', '00'];
-             if (!h) h = '09'; if (!m) m = '00';
-             if (type === 'h') h = val;
-             if (type === 'm') m = val;
-             setFormData({ ...formData, time: `${h}:${m}` });
-          };
-
-          const addCategory = () => {
-            if (newCatName.trim()) {
-                const newCat = { id: Date.now().toString(), name: newCatName, color: 'text-white border-white' };
-                setCategories([...categories, newCat]); setNewCatName(''); setFormData(prev => ({...prev, category: newCat.id}));
-            }
-          };
-          const deleteCategory = (id) => {
-             if(confirm('確定要刪除此分類嗎？')) {
-                 const newCats = categories.filter(c => c.id !== id); setCategories(newCats);
-                 if (formData.category === id && newCats.length > 0) setFormData(prev => ({...prev, category: newCats[0].id}));
-             }
-          };
-
-          const saveItem = () => {
-            if (!formData.title) { alert('請輸入標題'); return; }
-            const catToSave = formData.category || (categories.length > 0 ? categories[0].id : '');
-            if (editingItem) {
-              setItems(items.map(item => item.id === editingItem.id ? { ...item, ...formData, category: catToSave, date: currentDate } : item));
-            } else {
-              const newItem = { id: Date.now().toString(), date: currentDate, ...formData, category: catToSave };
-              const newAllItems = [...items, newItem]; newAllItems.sort((a, b) => a.time.localeCompare(b.time)); setItems(newAllItems);
-            }
-            setShowAddModal(false);
-          };
-          
-          const handleResetData = () => { if(confirm('重置所有資料？')) { localStorage.removeItem('fukuoka_trip_items_nishiyama'); localStorage.removeItem('fukuoka_trip_categories_nishiyama'); window.location.reload(); } }
-
-          const hours = Array.from({length: 24}, (_, i) => i.toString().padStart(2, '0'));
-          const minutes = Array.from({length: 12}, (_, i) => (i * 5).toString().padStart(2, '0'));
-
-          return (
-            <div className="min-h-screen pb-24 md:pb-10 select-none bg-[#121212] text-[#e0e0e0]">
-              <header className="sticky top-0 z-20 bg-[#121212] pt-safe-top transition-all border-b border-[#333]">
-                <div className="flex justify-between items-center px-6 py-4">
-                  <div>
-                    <p className="text-[10px] text-[#eeb947] tracking-[0.2em] font-bold uppercase mb-1">FUKUOKA TRIP</p>
-                    <h1 className="text-2xl font-black text-white italic tracking-tighter">福岡獨旅</h1>
-                  </div>
-                  <button onClick={() => setIsEditing(!isEditing)} className={`p-2 transition-colors ${isEditing ? 'text-[#eeb947]' : 'text-white'}`}>
-                    {isEditing ? <Icons.X size={24} /> : <Icons.Settings size={24} />}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-xs text-gray-500">時間</label>
+              <input 
+                type="time" 
+                name="time"
+                value={formData.time || ''} 
+                onChange={handleChange}
+                className="w-full bg-[#2a2a2a] border border-white/10 rounded-lg p-3 text-white focus:border-[#c5a059] focus:outline-none"
+              />
+            </div>
+            
+            <div className="space-y-1">
+              <label className="text-xs text-gray-500">分類</label>
+              {!isAddingCat ? (
+                <div className="flex gap-2">
+                  <select 
+                    name="category"
+                    value={formData.category || ''} 
+                    onChange={handleChange}
+                    className="w-full bg-[#2a2a2a] border border-white/10 rounded-lg p-3 text-white focus:border-[#c5a059] focus:outline-none appearance-none"
+                  >
+                    {categories.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                  </select>
+                  <button onClick={() => setIsAddingCat(true)} className="p-3 bg-[#2a2a2a] rounded-lg border border-white/10 text-gray-400 hover:text-[#c5a059]">
+                    <Plus size={18} />
                   </button>
                 </div>
-                <div className="flex overflow-x-auto px-6 pb-4 no-scrollbar gap-5">
-                    {TRIP_DATES_CONFIG.map(d => (
-                        <button key={d.date} onClick={() => setCurrentDateObj(d)} className={`flex-shrink-0 flex flex-col items-center justify-center w-14 h-16 rounded border transition-all duration-300 ${currentDate === d.date ? 'bg-[#eeb947] border-[#eeb947] text-[#121212] font-bold' : 'bg-transparent border-[#333] text-[#666] hover:border-[#666]'}`}>
-                            <span className="text-xs font-bold leading-none mb-1">{d.date}</span>
-                            <span className="text-sm font-mincho leading-none">{d.day}</span>
-                        </button>
-                    ))}
+              ) : (
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    placeholder="新分類名稱"
+                    value={newCatName}
+                    onChange={(e) => setNewCatName(e.target.value)}
+                    className="w-full bg-[#2a2a2a] border border-white/10 rounded-lg p-3 text-white focus:border-[#c5a059]"
+                    autoFocus
+                  />
+                  <button onClick={handleAddCategory} className="px-3 bg-[#c5a059] text-black font-bold rounded-lg text-sm">
+                    OK
+                  </button>
                 </div>
-              </header>
-
-              <main className="px-5 pt-6 max-w-md mx-auto space-y-6">
-                {currentItems.length === 0 && (
-                  <div className="text-center py-24 text-[#333]">
-                    <div className="flex justify-center mb-6 opacity-30 text-[#eeb947]"><Icons.MapPin size={40} /></div>
-                    <p className="text-sm font-bold tracking-widest text-[#666]">NO PLAN</p>
-                  </div>
-                )}
-                {currentItems.map((item, index) => (
-                  <div key={item.id} className="relative animate-slide-in">
-                    <div className="flex gap-4">
-                        <div className="w-14 pt-1 flex flex-col items-center">
-                            <span className="text-lg font-black text-[#eeb947] leading-none">{item.time.split(':')[0]}</span>
-                            <span className="text-xs font-bold text-[#666]">{item.time.split(':')[1]}</span>
-                            {index !== currentItems.length -1 && (
-                                <div className="w-[1px] flex-grow bg-[#333] my-2"></div>
-                            )}
-                        </div>
-                        <div className="flex-1 pb-8 border-b border-[#222]">
-                            <div className="flex items-center gap-2 mb-2">
-                                <h3 className="text-lg font-bold text-white leading-tight">{item.title}</h3>
-                                {item.location && (
-                                    <button onClick={() => handleOpenLink(item.location)} className="text-[#eeb947] hover:text-white transition-colors p-1">
-                                        <Icons.MapPin size={18} fill="#eeb947" />
-                                    </button>
-                                )}
-                            </div>
-                            {(item.hours || item.closed) && (
-                                <div className="flex flex-wrap gap-4 mb-3 text-[11px] font-medium tracking-wide">
-                                    {item.hours && <div className="flex items-center gap-1 text-[#ccc]"><span className="text-[#eeb947]">OPEN</span> {item.hours}</div>}
-                                    {item.closed && <div className="flex items-center gap-1 text-[#888]"><span className="text-[#c92a2a]">CLOSE</span> {item.closed}</div>}
-                                </div>
-                            )}
-                            {item.notes && <p className="text-sm text-[#888] leading-relaxed border-l-2 border-[#333] pl-3 py-1">{item.notes}</p>}
-                            {isEditing && (
-                                <div className="mt-4 flex items-center gap-4">
-                                    <button onClick={() => moveItem(index, 'up')} disabled={index === 0} className="p-2 bg-[#222] rounded text-[#888] disabled:opacity-30"><Icons.ChevronUp size={16} /></button>
-                                    <button onClick={() => moveItem(index, 'down')} disabled={index === currentItems.length - 1} className="p-2 bg-[#222] rounded text-[#888] disabled:opacity-30"><Icons.ChevronDown size={16} /></button>
-                                    <div className="flex-1"></div>
-                                    <button onClick={() => handleEditClick(item)} className="px-3 py-1 border border-[#444] text-[10px] font-bold text-[#888] hover:text-white hover:border-white transition-colors">EDIT</button>
-                                    <button onClick={() => deleteItem(item.id)} className="px-3 py-1 border border-[#444] text-[10px] font-bold text-[#c92a2a] hover:bg-[#c92a2a] hover:text-white hover:border-[#c92a2a] transition-colors">DEL</button>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                  </div>
-                ))}
-                <div className="pt-12 pb-4 text-center">
-                    <button onClick={handleResetData} className="text-[10px] font-bold text-[#333] hover:text-[#666] transition-colors tracking-widest uppercase">Factory Reset</button>
-                </div>
-                <div className="h-20"></div>
-              </main>
-
-              <div className="fixed bottom-8 left-0 right-0 flex justify-center pointer-events-none z-20 pb-safe-bottom">
-                <button onClick={handleAddNewClick} className="pointer-events-auto bg-[#eeb947] text-[#121212] rounded-none px-8 py-4 shadow-[0_4px_20px_rgba(238,185,71,0.3)] flex items-center gap-2 active:translate-y-1 transition-all">
-                  <Icons.Plus size={20} strokeWidth={3} />
-                  <span className="text-xs font-black tracking-[0.1em] uppercase">ADD PLAN</span>
-                </button>
-              </div>
-
-              {showAddModal && (
-                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
-                  <div className="absolute inset-0 bg-[#000]/95 backdrop-blur-sm transition-opacity" onClick={() => setShowAddModal(false)}></div>
-                  <div className="bg-[#1a1a1a] w-full max-w-md p-8 relative z-10 animate-slide-in pb-safe-bottom border-t-4 border-[#eeb947] sm:border-t-0 sm:border-l-4">
-                    <div className="flex justify-between items-center mb-8">
-                      <h2 className="text-xl font-black text-white italic tracking-tighter">{editingItem ? 'EDIT PLAN' : 'NEW PLAN'}</h2>
-                      <button onClick={() => setShowAddModal(false)} className="text-[#666] hover:text-white"><Icons.X size={24} /></button>
-                    </div>
-                    <div className="space-y-6">
-                      <div className="grid grid-cols-4 gap-6">
-                        <div className="col-span-2">
-                          <label className="text-[10px] font-bold text-[#eeb947] tracking-widest block mb-2">TIME (24H)</label>
-                          <div className="flex gap-2 items-center">
-                            <select value={formData.time ? formData.time.split(':')[0] : '09'} onChange={(e) => handleTimeChange('h', e.target.value)} className="flex-1 w-full text-lg text-center">{hours.map(h => <option key={h} value={h}>{h}</option>)}</select>
-                            <span className="text-white font-bold">:</span>
-                            <select value={formData.time ? formData.time.split(':')[1] : '00'} onChange={(e) => handleTimeChange('m', e.target.value)} className="flex-1 w-full text-lg text-center">{minutes.map(m => <option key={m} value={m}>{m}</option>)}</select>
-                          </div>
-                        </div>
-                        <div className="col-span-2">
-                           <label className="text-[10px] font-bold text-[#eeb947] tracking-widest block mb-2">CATEGORY</label>
-                           <div className="flex gap-2">
-                               <select value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})} className="w-full text-base">{categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}</select>
-                               <button onClick={() => setShowCatModal(true)} className="bg-[#333] px-3 rounded text-white font-bold hover:bg-[#555]">+</button>
-                           </div>
-                        </div>
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-[#eeb947] tracking-widest block mb-1">TITLE</label>
-                        <input type="text" placeholder="行程名稱" value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} className="w-full text-xl" />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-[#eeb947] tracking-widest block mb-1">MAP LINK</label>
-                        <input type="text" placeholder="請貼上 Google Maps 連結" value={formData.location} onChange={(e) => setFormData({...formData, location: e.target.value})} className="w-full text-sm placeholder-[#444]" />
-                      </div>
-                      <div className="grid grid-cols-2 gap-6">
-                          <div><label className="text-[10px] font-bold text-[#eeb947] tracking-widest block mb-1">OPEN</label><input type="text" placeholder="例 11:00-22:00" value={formData.hours} onChange={(e) => setFormData({...formData, hours: e.target.value})} className="w-full text-sm" /></div>
-                          <div><label className="text-[10px] font-bold text-[#eeb947] tracking-widest block mb-1">OFF</label><input type="text" placeholder="例 月曜日" value={formData.closed} onChange={(e) => setFormData({...formData, closed: e.target.value})} className="w-full text-sm" /></div>
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-[#eeb947] tracking-widest block mb-1">MEMO</label>
-                        <textarea rows="2" placeholder="備註..." value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="w-full text-sm resize-none"></textarea>
-                      </div>
-                      <button onClick={saveItem} className="w-full bg-[#eeb947] text-[#121212] hover:bg-[#ffcd57] py-4 text-sm font-black tracking-[0.2em] mt-2 uppercase transition-colors">SAVE CHANGE</button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {showCatModal && (
-                 <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-                   <div className="absolute inset-0 bg-[#000]/80 backdrop-blur-sm" onClick={() => setShowCatModal(false)}></div>
-                   <div className="bg-[#1a1a1a] w-full max-w-xs p-6 relative z-10 border border-[#444] shadow-2xl">
-                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-white font-bold">管理分類</h3>
-                        <button onClick={() => setShowCatModal(false)} className="text-[#666]"><Icons.X size={18}/></button>
-                      </div>
-                      <div className="space-y-2 mb-4 max-h-48 overflow-y-auto pr-1">
-                        {categories.map(cat => (
-                            <div key={cat.id} className="flex justify-between items-center bg-[#222] p-2 rounded border border-[#333]">
-                                <span className="text-sm text-white font-bold">{cat.name}</span>
-                                <button onClick={() => deleteCategory(cat.id)} className="text-[#c92a2a] hover:text-red-400 p-1"><Icons.Trash size={14}/></button>
-                            </div>
-                        ))}
-                      </div>
-                      <div className="flex gap-2">
-                          <input type="text" placeholder="新分類名稱" value={newCatName} onChange={(e) => setNewCatName(e.target.value)} className="flex-1 text-sm bg-transparent border-b border-[#666] text-white" />
-                          <button onClick={addCategory} className="bg-[#eeb947] text-black px-3 py-1 font-bold text-xs hover:bg-[#ffcd57]">新增</button>
-                      </div>
-                   </div>
-                 </div>
               )}
             </div>
-          );
-        }
+          </div>
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-</body>
-</html>
+          <div className="space-y-1">
+            <label className="text-xs text-gray-500">標題</label>
+            <input 
+              type="text" 
+              name="title"
+              value={formData.title || ''} 
+              onChange={handleChange}
+              className="w-full bg-[#2a2a2a] border border-white/10 rounded-lg p-3 text-white focus:border-[#c5a059] focus:outline-none font-medium"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs text-gray-500 flex items-center gap-2">
+              <LinkIcon size={12} /> 地圖/網站連結 (Map Link)
+            </label>
+            <input 
+              type="text" 
+              name="link"
+              placeholder="https://..."
+              value={formData.link || ''} 
+              onChange={handleChange}
+              className="w-full bg-[#2a2a2a] border border-white/10 rounded-lg p-3 text-blue-400 text-sm focus:border-[#c5a059] focus:outline-none"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs text-gray-500">備註 (支援超連結)</label>
+            <textarea 
+              name="memo"
+              rows={3}
+              value={formData.memo || ''} 
+              onChange={handleChange}
+              placeholder="例如：需預約，網址：https://..."
+              className="w-full bg-[#2a2a2a] border border-white/10 rounded-lg p-3 text-gray-300 text-sm focus:border-[#c5a059] focus:outline-none resize-none"
+            />
+          </div>
+
+          <button 
+            onClick={() => onDelete(formData.id)}
+            className="w-full py-3 flex items-center justify-center gap-2 text-red-400 bg-red-400/10 rounded-lg hover:bg-red-400/20 transition-colors"
+          >
+            <Trash2 size={16} /> 刪除此行程
+          </button>
+        </div>
+
+        {/* Modal Footer */}
+        <div className="p-4 border-t border-white/10 bg-[#1e1e1e]">
+          <button 
+            onClick={() => onSave(formData)}
+            className="w-full py-3 bg-[#c5a059] hover:bg-[#b08d4a] text-black font-bold rounded-lg shadow-lg shadow-[#c5a059]/20 transition-all flex items-center justify-center gap-2"
+          >
+            <Save size={18} /> 儲存變更
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// -----------------------------------------------------------------------------
+// 主應用程式
+// -----------------------------------------------------------------------------
+const FukuokaSoloTripApp = () => {
+  const [activeDate, setActiveDate] = useState('10月26日');
+  const [items, setItems] = useState(INITIAL_DATA);
+  const [categories, setCategories] = useState(CATEGORIES);
+  const [editingItem, setEditingItem] = useState(null);
+  
+  // Drag & Drop State
+  const dragItem = useRef();
+  const dragOverItem = useRef();
+
+  // Helper: 取得分類樣式
+  const getCatStyle = (catName) => {
+    return categories.find(c => c.name === catName) || categories[categories.length - 1];
+  };
+
+  // Helper: 處理備註內的連結
+  const renderMemoWithLinks = (text) => {
+    if (!text) return null;
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = text.split(urlRegex);
+    return (
+      <span className="break-words">
+        {parts.map((part, i) => 
+          part.match(urlRegex) ? (
+            <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-400 underline decoration-blue-400/50 underline-offset-2 hover:text-blue-300" onClick={(e) => e.stopPropagation()}>
+              連結
+            </a>
+          ) : part
+        )}
+      </span>
+    );
+  };
+
+  // Logic: 拖曳排序
+  const handleDragStart = (e, position) => {
+    dragItem.current = position;
+    // 手機震動反饋
+    if (navigator.vibrate) navigator.vibrate(50);
+  };
+
+  const handleDragEnter = (e, position) => {
+    dragOverItem.current = position;
+  };
+
+  const handleDrop = () => {
+    if (dragItem.current === null || dragOverItem.current === null) return;
+    
+    // 只在同一天內排序
+    const currentDayItems = items.filter(i => i.date === activeDate);
+    const otherItems = items.filter(i => i.date !== activeDate);
+    
+    const copyListItems = [...currentDayItems];
+    const dragItemContent = copyListItems[dragItem.current];
+    
+    copyListItems.splice(dragItem.current, 1);
+    copyListItems.splice(dragOverItem.current, 0, dragItemContent);
+    
+    setItems([...otherItems, ...copyListItems]);
+    
+    dragItem.current = null;
+    dragOverItem.current = null;
+  };
+
+  // Logic: CRUD
+  const handleSave = (newItem) => {
+    setItems(items.map(i => i.id === newItem.id ? newItem : i));
+    setEditingItem(null);
+  };
+
+  const handleDelete = (id) => {
+    if (confirm('確定要刪除這個行程嗎？')) {
+      setItems(items.filter(i => i.id !== id));
+      setEditingItem(null);
+    }
+  };
+
+  const handleAddNew = () => {
+    const newItem = {
+      id: Date.now().toString(),
+      date: activeDate,
+      time: '00:00',
+      category: '移動',
+      title: '新行程',
+      link: '',
+      memo: ''
+    };
+    setItems([...items, newItem]);
+    setEditingItem(newItem);
+  };
+
+  const filteredItems = items.filter(item => item.date === activeDate);
+  const uniqueDates = Object.keys(WEEKDAYS);
+
+  return (
+    <>
+      <FontStyles />
+      <div className="min-h-screen pb-20 safe-bottom selection:bg-[#c5a059] selection:text-black">
+        
+        {/* 1. Hero Banner */}
+        <div className="relative h-64 w-full overflow-hidden bg-black">
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#121212]/50 to-[#121212] z-10" />
+          <img 
+            src={BANNER_IMAGE_URL} 
+            onError={(e) => {
+              e.target.onerror = null; 
+              // 備用圖片：若連結失效，顯示一張通用的日本夜景
+              e.target.src = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop";
+            }}
+            alt="Fukuoka Trip Banner" 
+            className="w-full h-full object-cover opacity-80"
+          />
+          <div className="absolute bottom-4 left-6 z-20">
+            <h1 className="text-4xl font-serif font-bold text-white tracking-wider mb-1" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
+              福岡獨旅
+            </h1>
+            <div className="h-1 w-12 bg-[#c5a059] rounded-full" />
+          </div>
+        </div>
+
+        {/* 2. Date Navigation (Sticky) */}
+        <div className="sticky top-0 z-40 bg-[#121212]/95 backdrop-blur-md border-b border-white/5 shadow-lg">
+          <div className="flex overflow-x-auto no-scrollbar py-3 px-4 gap-3">
+            {uniqueDates.map((date) => {
+              const isActive = activeDate === date;
+              return (
+                <button
+                  key={date}
+                  onClick={() => setActiveDate(date)}
+                  className={`flex flex-col items-center justify-center min-w-[60px] py-2 rounded-xl transition-all duration-300 ${
+                    isActive 
+                      ? 'bg-[#c5a059] text-[#121212] shadow-[0_0_15px_rgba(197,160,89,0.3)] transform scale-105' 
+                      : 'bg-[#1e1e1e] text-gray-400 border border-white/5'
+                  }`}
+                >
+                  <span className={`text-xs font-bold font-serif mb-1 ${isActive ? 'text-[#121212]' : 'text-gray-500'}`}>
+                    {date}
+                  </span>
+                  <span className={`text-lg font-bold ${isActive ? 'text-black' : 'text-gray-300'}`}>
+                    {WEEKDAYS[date]}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 3. Itinerary List */}
+        <div className="px-4 py-6 max-w-lg mx-auto">
+          {filteredItems.length === 0 ? (
+            <div className="text-center py-20 text-gray-600 flex flex-col items-center">
+              <Camera size={48} className="mb-4 opacity-20" />
+              <p className="text-sm font-serif">今日暫無行程</p>
+              <button onClick={handleAddNew} className="mt-4 text-[#c5a059] text-sm hover:underline">
+                新增一個行程
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredItems.map((item, index) => {
+                const style = getCatStyle(item.category);
+                const Icon = style.icon;
+                
+                return (
+                  <div 
+                    key={item.id}
+                    className="group relative bg-[#1e1e1e] rounded-xl border border-white/5 overflow-hidden transition-all duration-300 hover:border-[#c5a059]/30 hover:shadow-lg active:scale-[0.99]"
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, index)}
+                    onDragEnter={(e) => handleDragEnter(e, index)}
+                    onDragEnd={handleDrop}
+                    onDragOver={(e) => e.preventDefault()}
+                    onClick={() => setEditingItem(item)}
+                  >
+                    <div className="flex items-stretch min-h-[5rem]">
+                      {/* Left: Time & Decorative Line */}
+                      <div className="w-16 flex flex-col items-center justify-center border-r border-white/5 bg-[#252525]">
+                        <span className="text-sm font-bold text-gray-300 font-mono tracking-tighter">
+                          {item.time}
+                        </span>
+                        <div className={`h-8 w-[1px] my-1 ${style.bg.replace('/10', '/50')}`} />
+                        <Icon size={14} className={style.color} />
+                      </div>
+
+                      {/* Center: Content */}
+                      <div className="flex-1 p-3 flex flex-col justify-center min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${style.color} ${style.bg} ${style.border}`}>
+                            {item.category}
+                          </span>
+                        </div>
+                        <h3 className="text-base font-bold text-gray-100 truncate pr-2 font-serif leading-tight">
+                          {item.title}
+                        </h3>
+                        {(item.memo || item.link) && (
+                          <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-400">
+                             {item.link && (
+                               <a 
+                                 href={item.link} 
+                                 target="_blank" 
+                                 rel="noopener noreferrer" 
+                                 className="flex items-center gap-1 text-[#c5a059] hover:text-white transition-colors bg-[#c5a059]/10 px-2 py-0.5 rounded"
+                                 onClick={(e) => e.stopPropagation()}
+                               >
+                                 <Navigation size={10} /> 導航
+                               </a>
+                             )}
+                             {item.memo && (
+                               <span className="flex-1 truncate opacity-70 border-l border-gray-600 pl-2">
+                                 {renderMemoWithLinks(item.memo)}
+                               </span>
+                             )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right: Drag Handle */}
+                      <div className="w-8 flex items-center justify-center text-gray-600 cursor-grab active:cursor-grabbing hover:text-gray-400 bg-gradient-to-l from-black/20 to-transparent">
+                        <GripVertical size={16} />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* 4. Floating Action Button */}
+        <button 
+          onClick={handleAddNew}
+          className="fixed bottom-6 right-6 w-14 h-14 bg-[#c5a059] text-black rounded-full shadow-[0_4px_20px_rgba(197,160,89,0.4)] flex items-center justify-center hover:bg-[#d4b06a] hover:scale-110 transition-all z-30"
+        >
+          <Plus size={28} />
+        </button>
+
+        {/* 5. Edit Modal */}
+        <EditModal 
+          key={editingItem ? editingItem.id : 'edit-modal'} // 強制重置 Modal 狀態
+          item={editingItem} 
+          isOpen={!!editingItem} 
+          onClose={() => setEditingItem(null)} 
+          onSave={handleSave}
+          onDelete={handleDelete}
+          categories={categories}
+          setCategories={setCategories}
+        />
+
+      </div>
+    </>
+  );
+};
+
+export default FukuokaSoloTripApp;
