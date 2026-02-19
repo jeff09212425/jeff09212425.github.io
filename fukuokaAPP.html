@@ -104,7 +104,7 @@
         const { createRoot } = ReactDOM;
 
         // 資料版本號 - 修改此號碼可強制重置使用者的舊資料
-        const DATA_VERSION = "v1.1";
+        const DATA_VERSION = "v1.2";
 
         // --- 內建圖示元件 (無需外部載入) ---
         const IconBase = ({ size = 24, className = "", children, ...props }) => (
@@ -180,20 +180,20 @@
         // 10月29日 (木)
         { id: '26', date: '10月29日', time: '7:00', category: '食事', title: 'DACOMECCA', link: 'https://maps.app.goo.gl/2nMJPmHuzDismBQM6', memo: '' },
         { id: '27', date: '10月29日', time: '8:30', category: '移動', title: '博多→門司港', link: '', memo: '博多→小倉（新幹線），小倉→門司港 (北九州周遊Pass)' },
-        { id: '28', date: '10月29日', time: '9:00', category: '觀光', title: '関門海峡ミュージアム', link: 'https://www.google.com/maps?cid=18212556726394048423', memo: '北九州周遊pass' },
-        { id: '29', date: '10月29日', time: '10:00', category: '觀光', title: '門司港レトロ展望室', link: 'https://maps.app.goo.gl/y8YYASgCNzWSY1kJ8', memo: '北九州周遊pass' },
-        { id: '30', date: '10月29日', time: '10:30', category: '觀光', title: '和布刈神社', link: 'https://www.google.com/maps?cid=12821316231491149772', memo: '' },
-        { id: '31', date: '10月29日', time: '11:30', category: '食事', title: '下関 唐戸市場', link: 'https://maps.app.goo.gl/HHpj4tkK4AfchyxM7', memo: '營業時間：10:00 - 15:00' },
-        { id: '32', date: '10月29日', time: '13:00', category: '觀光', title: '海峡プラザ', link: 'https://maps.app.goo.gl/DNsGw8f6tPRCDKXQ6', memo: '伴手禮小吃' },
-        { id: '33', date: '10月29日', time: '13:30', category: '移動', title: '門司港→小倉', link: '', memo: '北九州周遊pass' },
-        { id: '34', date: '10月29日', time: '14:00', category: '買物', title: 'Aruaru City', link: 'https://maps.app.goo.gl/CAymEorcxp1upN7V7', memo: '' },
-        { id: '35', date: '10月29日', time: '14:30', category: '觀光', title: '八坂神社', link: 'https://maps.app.goo.gl/YTiyDgXMqiisaVBa9', memo: '' },
-        { id: '36', date: '10月29日', time: '15:00', category: '觀光', title: '小倉城', link: 'https://maps.app.goo.gl/gC8GK9sfqSByCvDd8', memo: '北九州周遊pass' },
-        { id: '37', date: '10月29日', time: '16:30', category: '移動', title: '西小倉→八幡', link: '', memo: '北九州周遊pass' },
-        { id: '38', date: '10月29日', time: '17:25', category: '移動', title: '接駁車→皿倉山', link: 'https://maps.app.goo.gl/B2M9SUyakKSLbLhe8', memo: '時刻表https://www.sarakurayama-cablecar.co.jp/shuttlebus/' },
-        { id: '39', date: '10月29日', time: '17:45', category: '觀光', title: '皿倉山夜景', link: '', memo: 'ケーブルカー' },
-        { id: '40', date: '10月29日', time: '19:30', category: '移動', title: '八幡→博多', link: '', memo: '' },
-        { id: '41', date: '10月29日', time: '21:30', category: '食事', title: 'にく屋 肉いち  博多店', link: 'https://maps.app.goo.gl/tW2M4KA1tEDXbHVH6', memo: '營業時間：16:00–24:00，2個月前要網路訂位' },
+        { id: '28', date: '10月29日', time: '09:00', category: '移動', title: '門司港→下関（唐戸）', link: 'https://maps.app.goo.gl/p12fN4g6ZJ9c8Zrw8', memo: '單程400円，時刻表https://www.kanmon-kisen.co.jp/route/kanmon.html' },
+        { id: '29', date: '10月29日', time: '09:30', category: '觀光', title: '海響館', link: 'https://maps.app.goo.gl/1NvAgdXs3wMCQe5Y7', memo: '營業時間：9:30 - 17:30，2,500円' },
+        { id: '30', date: '10月29日', time: '11:30', category: '食事', title: '下関 唐戸市場', link: 'https://maps.app.goo.gl/HHpj4tkK4AfchyxM7', memo: '營業時間：10:00 - 15:00' },
+        { id: '31', date: '10月29日', time: '13:00', category: '觀光', title: '門司港レトロ展望室', link: 'https://maps.app.goo.gl/y8YYASgCNzWSY1kJ8', memo: '北九州周遊pass' },
+        { id: '32', date: '10月29日', time: '13:30', category: '觀光', title: '海峡プラザ', link: 'https://maps.app.goo.gl/DNsGw8f6tPRCDKXQ6', memo: '伴手禮小吃' },
+        { id: '33', date: '10月29日', time: '14:00', category: '移動', title: '門司港→小倉', link: '', memo: '北九州周遊pass' },
+        { id: '34', date: '10月29日', time: '15:00', category: '買物', title: 'Aruaru City', link: 'https://maps.app.goo.gl/CAymEorcxp1upN7V7', memo: '' },
+        { id: '35', date: '10月29日', time: '15:00', category: '觀光', title: '八坂神社', link: 'https://maps.app.goo.gl/YTiyDgXMqiisaVBa9', memo: '' },
+        { id: '36', date: '10月29日', time: '15:30', category: '觀光', title: '小倉城', link: 'https://maps.app.goo.gl/gC8GK9sfqSByCvDd8', memo: '北九州周遊pass' },
+        { id: '37', date: '10月29日', time: '17:30', category: '移動', title: '西小倉→八幡', link: '', memo: '北九州周遊pass' },
+        { id: '38', date: '10月29日', time: '18:05', category: '移動', title: '接駁車→皿倉山', link: 'https://maps.app.goo.gl/B2M9SUyakKSLbLhe8', memo: '時刻表https://www.sarakurayama-cablecar.co.jp/shuttlebus/' },
+        { id: '39', date: '10月29日', time: '18:40', category: '觀光', title: '皿倉山ケーブルカー夜景', link: '', memo: '時刻表https://www.sarakurayama-cablecar.co.jp/timetable/' },
+        { id: '40', date: '10月29日', time: '19:40', category: '移動', title: '山上駅→博多', link: '', memo: '' },
+        { id: '41', date: '10月29日', time: '22:30', category: '食事', title: 'にく屋 肉いち  博多店', link: 'https://maps.app.goo.gl/tW2M4KA1tEDXbHVH6', memo: '營業時間：16:00–24:00，2個月前要網路訂位' },
 
         // 10月30日 (金)
         { id: '42', date: '10月30日', time: '7:45', category: '移動', title: '櫛田神社前→六本松', link: '', memo: '' },
