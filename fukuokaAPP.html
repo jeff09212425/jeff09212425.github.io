@@ -5,15 +5,65 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>福岡獨旅行程表</title>
     
+    <!-- 錯誤捕捉與狀態顯示 -->
+    <style>
+        #status-overlay {
+            display: none;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: white; color: #333; z-index: 9999; padding: 20px;
+            font-family: sans-serif;
+        }
+        .error-box {
+            border: 2px solid red;
+            background: #fff0f0;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .reset-btn {
+            background: #ef4444; color: white; border: none; padding: 10px 20px;
+            border-radius: 5px; cursor: pointer; font-size: 16px; margin-top: 20px;
+        }
+        .reset-btn:hover { background: #dc2626; }
+    </style>
+    <div id="status-overlay">
+        <h2 style="color: red;">⚠️ 程式發生錯誤</h2>
+        <p>這通常是因為舊的暫存資料與新版程式不相容導致。</p>
+        <p>請點擊下方按鈕清除暫存並重置：</p>
+        <button onclick="hardReset()" class="reset-btn">清除舊資料並修復</button>
+        <div id="error-content" class="error-box"></div>
+    </div>
+    <script>
+        function hardReset() {
+            try {
+                localStorage.clear();
+                alert("已清除暫存資料，網頁將重新整理。");
+                window.location.reload();
+            } catch(e) {
+                alert("清除失敗，請嘗試手動清除瀏覽器快取。");
+            }
+        }
+
+        window.onerror = function(msg, url, line, col, error) {
+            var overlay = document.getElementById('status-overlay');
+            var content = document.getElementById('error-content');
+            overlay.style.display = 'block';
+            content.innerText = "錯誤訊息: " + msg + "\n位置: " + line + ":" + col;
+            return false;
+        };
+    </script>
+
     <!-- 1. 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- 2. 引入 React 和 ReactDOM -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- 2. 引入 React 和 ReactDOM (使用 unpkg，相容性較好) -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     
     <!-- 3. 引入 Babel -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
@@ -42,29 +92,23 @@
 <body>
     <div id="root"></div>
 
-    <script type="text/babel">
-        // --- 解構 React 變數 ---
+    <script type="text/babel" data-presets="react">
+        // 確保 React 載入
+        if (typeof React === 'undefined') {
+            document.getElementById('status-overlay').style.display = 'block';
+            document.getElementById('error-content').innerText = "React 載入失敗，請檢查網路。";
+            throw new Error("React Load Failed");
+        }
+
         const { useState, useRef, useEffect } = React;
         const { createRoot } = ReactDOM;
 
-        // --- 內建圖示元件區 (解決 Lucide UMD 載入錯誤問題) ---
-        // 這些圖示直接定義在這裡，不需要外部 script
+        // 資料版本號 - 修改此號碼可強制重置使用者的舊資料
+        const DATA_VERSION = "v1.1";
+
+        // --- 內建圖示元件 (無需外部載入) ---
         const IconBase = ({ size = 24, className = "", children, ...props }) => (
-            <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                width={size} 
-                height={size} 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="currentColor" 
-                strokeWidth="2" 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                className={className} 
-                {...props}
-            >
-                {children}
-            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>{children}</svg>
         );
 
         const Icons = {
@@ -89,7 +133,6 @@
             Menu: (p) => <IconBase {...p}><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></IconBase>
         };
 
-        // 從本地定義的 Icons 物件中解構
         const { 
             MapPin, Clock, ExternalLink, Utensils, Bed, Car, 
             ShoppingBag, Camera, Plus, Trash2, GripVertical, 
@@ -339,9 +382,20 @@
         const [activeDate, setActiveDate] = useState('10月26日');
         const [isMenuOpen, setIsMenuOpen] = useState(false);
         
-        // --- 修正1: 強化版讀取邏輯 (防崩潰) ---
+        // 強化版讀取邏輯 (防崩潰 + 版本控制)
         const [items, setItems] = useState(() => {
             try {
+                // 安全檢查
+                if (typeof localStorage === 'undefined') return INITIAL_DATA;
+
+                // 版本檢查：如果版本不符，直接重置
+                const savedVersion = localStorage.getItem('fukuoka_data_version');
+                if (savedVersion !== DATA_VERSION) {
+                    console.log("資料版本過舊，進行重置");
+                    // 不回傳舊資料，直接回傳 INITIAL_DATA，並在 useEffect 中更新 storage
+                    return INITIAL_DATA;
+                }
+
                 const savedData = localStorage.getItem('fukuoka_trip_data');
                 if (savedData) {
                     const parsed = JSON.parse(savedData);
@@ -350,40 +404,60 @@
                     }
                 }
             } catch (e) {
-                console.error("讀取存檔失敗，還原至初始狀態", e);
+                console.warn("讀取存檔失敗:", e);
             }
             return INITIAL_DATA;
         });
 
         const [categories, setCategories] = useState(() => {
             try {
+                if (typeof localStorage === 'undefined') return CATEGORIES;
+                
+                // 版本檢查同上
+                const savedVersion = localStorage.getItem('fukuoka_data_version');
+                if (savedVersion !== DATA_VERSION) return CATEGORIES;
+
                 const savedCats = localStorage.getItem('fukuoka_trip_categories');
                 if (savedCats) {
                     const parsed = JSON.parse(savedCats);
                     if (Array.isArray(parsed)) return parsed;
                 }
-            } catch(e) { console.error(e); }
+            } catch(e) { console.warn(e); }
             return CATEGORIES;
         });
 
         const [editingItem, setEditingItem] = useState(null);
         
-        // --- 修正2: 寫入 LocalStorage ---
+        // 寫入 LocalStorage (包含版本號)
         useEffect(() => {
-            localStorage.setItem('fukuoka_trip_data', JSON.stringify(items));
+            try {
+                if (typeof localStorage !== 'undefined') {
+                    localStorage.setItem('fukuoka_trip_data', JSON.stringify(items));
+                    localStorage.setItem('fukuoka_data_version', DATA_VERSION); // 寫入版本號
+                }
+            } catch (e) { console.warn("寫入失敗", e); }
         }, [items]);
 
         useEffect(() => {
-            localStorage.setItem('fukuoka_trip_categories', JSON.stringify(categories));
+            try {
+                if (typeof localStorage !== 'undefined') {
+                    localStorage.setItem('fukuoka_trip_categories', JSON.stringify(categories));
+                }
+            } catch (e) { console.warn("寫入失敗", e); }
         }, [categories]);
 
         // Drag & Drop State
         const dragItem = useRef();
         const dragOverItem = useRef();
 
-        // Helper: 取得分類樣式
+        // Helper: 取得分類樣式 (加強防呆)
         const getCatStyle = (catName) => {
-            return categories.find(c => c.name === catName) || categories[categories.length - 1];
+            const found = categories.find(c => c.name === catName);
+            // 如果找不到或者找到的物件沒有 bg 屬性，回傳預設值
+            if (!found || !found.bg) {
+                return categories[categories.length - 1] || { bg: '', color: '', border: '' };
+            }
+            return found;
         };
 
         // Helper: 處理備註內的連結
@@ -462,8 +536,11 @@
         // Logic: Reset Data
         const handleResetData = () => {
             if (confirm('確定要重置所有行程嗎？這將會刪除您所有的修改，變回預設狀態。')) {
-                localStorage.removeItem('fukuoka_trip_data');
-                localStorage.removeItem('fukuoka_trip_categories');
+                try {
+                    localStorage.removeItem('fukuoka_trip_data');
+                    localStorage.removeItem('fukuoka_trip_categories');
+                    localStorage.removeItem('fukuoka_data_version');
+                } catch(e) {}
                 setItems(INITIAL_DATA);
                 setCategories(CATEGORIES);
                 alert('行程已重置');
@@ -473,12 +550,21 @@
         // Logic: Export Data
         const handleExportData = () => {
             const dataStr = JSON.stringify(items, null, 2);
-            navigator.clipboard.writeText(dataStr).then(() => {
-                alert('已將行程數據複製到剪貼簿！\n\n請打開原始碼檔案(index.html)，找到 "const INITIAL_DATA = [...]" 的部分，將其內容替換為您剛剛複製的內容。');
-            }).catch(err => {
-                console.error('複製失敗:', err);
-                alert('複製失敗，請手動複製 console 中的資料');
-            });
+            // 嘗試複製
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(dataStr).then(() => {
+                    alert('已將行程數據複製到剪貼簿！\n\n請打開原始碼檔案(index.html)，找到 "const INITIAL_DATA = [...]" 的部分，將其內容替換為您剛剛複製的內容。');
+                }).catch(err => {
+                    console.error('複製失敗:', err);
+                    alert('複製失敗，可能因瀏覽器安全性限制（如本機檔案模式）。\n請按 F12 打開 Console 查看並手動複製數據。');
+                    console.log("=== 您的行程數據 ===");
+                    console.log(dataStr);
+                });
+            } else {
+                alert('您的環境不支援自動複製（通常發生在本機檔案模式）。\n請按 F12 打開 Console，我已將數據印在裡面。');
+                console.log("=== 您的行程數據 ===");
+                console.log(dataStr);
+            }
         };
 
         const filteredItems = items.filter(item => item.date === activeDate);
@@ -602,7 +688,8 @@
                             <span className="text-sm font-bold text-gray-300 font-mono tracking-tighter">
                                 {item.time}
                             </span>
-                            <div className={`h-8 w-[1px] my-1 ${style.bg.replace('/10', '/50')}`} />
+                            {/* 關鍵修復：加入安全檢查 (style.bg || '')，避免舊資料造成崩潰 */}
+                            <div className={`h-8 w-[1px] my-1 ${(style.bg || '').replace('/10', '/50')}`} />
                             <Icon size={14} className={style.color} />
                             </div>
 
