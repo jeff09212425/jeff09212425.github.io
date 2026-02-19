@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>福岡獨旅行程表</title>
     
-    <!-- 1. 引入 Tailwind CSS (樣式庫) -->
+    <!-- 1. 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- 2. 引入 Babel (讓瀏覽器看懂 React JSX) -->
+    <!-- 2. 引入 Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <!-- 3. 設定 Import Map -->
@@ -26,7 +26,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
 
     <style>
-        /* 基礎樣式覆蓋 */
+        /* 基礎樣式 */
         :root {
             --font-serif: 'Noto Serif JP', serif;
             --font-sans: 'Noto Sans JP', sans-serif;
@@ -40,34 +40,29 @@
             color: var(--text-main);
             font-family: var(--font-sans);
         }
-        /* 隱藏卷軸但保持功能 */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        /* PWA Safe Area */
         .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
-        
-        /* 修正 Safari/iOS 的一些顯示問題 */
         select { -webkit-appearance: none; }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
-    <!-- 4. 您的 React 程式碼 -->
     <script type="text/babel" data-type="module">
         import React, { useState, useRef, useEffect } from 'react';
         import { createRoot } from 'react-dom/client';
         import { 
             MapPin, Clock, ExternalLink, Utensils, Bed, Car, 
             ShoppingBag, Camera, Plus, Trash2, GripVertical, 
-            Save, X, Link as LinkIcon, Navigation, RotateCcw
+            Save, X, Link as LinkIcon, Navigation, RotateCcw, 
+            Download, Copy, Menu // 新增 Menu 圖示
         } from 'lucide-react';
 
-        // === 圖片設定區 ===
         const BANNER_IMAGE_URL = "https://lh3.googleusercontent.com/d/1mo1MaLdcHTVJ8KnhX4ijr23dY2QGC7GY"; 
 
         // -----------------------------------------------------------------------------
-        // 初始數據 (這是預設值，如果 LocalStorage 有資料會被覆蓋)
+        // 初始數據
         // -----------------------------------------------------------------------------
         const INITIAL_DATA = [
         // 10月26日 (月)
@@ -304,23 +299,41 @@
         // -----------------------------------------------------------------------------
         const FukuokaSoloTripApp = () => {
         const [activeDate, setActiveDate] = useState('10月26日');
+        const [isMenuOpen, setIsMenuOpen] = useState(false); // 新增選單狀態
         
-        // --- 修正1: 讀取 LocalStorage ---
-        // 初始狀態會先檢查瀏覽器有沒有 'fukuoka_trip_data'，沒有才用 INITIAL_DATA
+        // --- 修正1: 強化版讀取邏輯 (防崩潰) ---
         const [items, setItems] = useState(() => {
-            const savedData = localStorage.getItem('fukuoka_trip_data');
-            return savedData ? JSON.parse(savedData) : INITIAL_DATA;
+            try {
+                const savedData = localStorage.getItem('fukuoka_trip_data');
+                // 如果有資料，嘗試解析
+                if (savedData) {
+                    const parsed = JSON.parse(savedData);
+                    // 檢查解析出來的是不是陣列，如果不是陣列(代表資料壞了)，就回傳預設值
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        return parsed;
+                    }
+                }
+            } catch (e) {
+                console.error("讀取存檔失敗，還原至初始狀態", e);
+            }
+            // 如果沒資料、資料壞掉、或發生錯誤，都回傳初始值
+            return INITIAL_DATA;
         });
 
         const [categories, setCategories] = useState(() => {
-            const savedCats = localStorage.getItem('fukuoka_trip_categories');
-            return savedCats ? JSON.parse(savedCats) : CATEGORIES;
+            try {
+                const savedCats = localStorage.getItem('fukuoka_trip_categories');
+                if (savedCats) {
+                    const parsed = JSON.parse(savedCats);
+                    if (Array.isArray(parsed)) return parsed;
+                }
+            } catch(e) { console.error(e); }
+            return CATEGORIES;
         });
 
         const [editingItem, setEditingItem] = useState(null);
         
         // --- 修正2: 寫入 LocalStorage ---
-        // 當 items 或 categories 有變動時，自動存入瀏覽器
         useEffect(() => {
             localStorage.setItem('fukuoka_trip_data', JSON.stringify(items));
         }, [items]);
@@ -359,7 +372,6 @@
         // Logic: 拖曳排序
         const handleDragStart = (e, position) => {
             dragItem.current = position;
-            // 手機震動反饋
             if (navigator.vibrate) navigator.vibrate(50);
         };
 
@@ -370,7 +382,6 @@
         const handleDrop = () => {
             if (dragItem.current === null || dragOverItem.current === null) return;
             
-            // 只在同一天內排序
             const currentDayItems = items.filter(i => i.date === activeDate);
             const otherItems = items.filter(i => i.date !== activeDate);
             
@@ -424,25 +435,70 @@
             }
         };
 
+        // Logic: Export Data
+        const handleExportData = () => {
+            const dataStr = JSON.stringify(items, null, 2);
+            navigator.clipboard.writeText(dataStr).then(() => {
+                alert('已將行程數據複製到剪貼簿！\n\n請打開原始碼檔案(index.html)，找到 "const INITIAL_DATA = [...]" 的部分，將其內容替換為您剛剛複製的內容。');
+            }).catch(err => {
+                console.error('複製失敗:', err);
+                alert('複製失敗，請手動複製 console 中的資料');
+            });
+        };
+
         const filteredItems = items.filter(item => item.date === activeDate);
         const uniqueDates = Object.keys(WEEKDAYS);
 
         return (
             <div className="min-h-screen pb-20 safe-bottom selection:bg-[#c5a059] selection:text-black">
             
-            {/* 1. Hero Banner */}
+            {/* 1. Hero Banner (含右上角漢堡選單) */}
             <div className="relative h-64 w-full overflow-hidden bg-black">
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#121212]/50 to-[#121212] z-10" />
                 <img 
                 src={BANNER_IMAGE_URL} 
                 onError={(e) => {
                     e.target.onerror = null; 
-                    // 備用圖片：若連結失效，顯示一張通用的日本夜景
                     e.target.src = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop";
                 }}
                 alt="Fukuoka Trip Banner" 
                 className="w-full h-full object-cover opacity-80"
                 />
+                
+                {/* Hamburger Menu Button */}
+                <button 
+                    onClick={() => setIsMenuOpen(!isMenuOpen)}
+                    className="absolute top-6 right-6 z-50 p-2 bg-black/30 backdrop-blur-md rounded-full text-white/80 hover:bg-[#c5a059] hover:text-white transition-all border border-white/10"
+                >
+                    <Menu size={24} />
+                </button>
+
+                {/* Menu Dropdown */}
+                {isMenuOpen && (
+                    <>
+                        <div className="fixed inset-0 z-40" onClick={() => setIsMenuOpen(false)} />
+                        <div className="absolute top-20 right-6 z-50 w-56 bg-[#1e1e1e] border border-white/10 rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top-right">
+                            <div className="p-1">
+                                <button
+                                    onClick={() => { handleExportData(); setIsMenuOpen(false); }}
+                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-[#c5a059] transition-colors rounded-lg text-left"
+                                >
+                                    <Copy size={16} />
+                                    <span>匯出行程數據</span>
+                                </button>
+                                <div className="h-[1px] bg-white/5 my-1" />
+                                <button
+                                    onClick={() => { handleResetData(); setIsMenuOpen(false); }}
+                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-400 hover:bg-red-500/10 transition-colors rounded-lg text-left"
+                                >
+                                    <RotateCcw size={16} />
+                                    <span>重置所有行程</span>
+                                </button>
+                            </div>
+                        </div>
+                    </>
+                )}
+
                 <div className="absolute bottom-4 left-6 z-20">
                 <h1 className="text-4xl font-serif font-bold text-white tracking-wider mb-1" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
                     福岡獨旅
@@ -451,7 +507,7 @@
                 </div>
             </div>
 
-            {/* 2. Date Navigation (Sticky) */}
+            {/* 2. Date Navigation */}
             <div className="sticky top-0 z-40 bg-[#121212]/95 backdrop-blur-md border-b border-white/5 shadow-lg">
                 <div className="flex overflow-x-auto no-scrollbar py-3 px-4 gap-3">
                 {uniqueDates.map((date) => {
@@ -558,15 +614,8 @@
                 </div>
                 )}
                 
-                {/* Reset Button (New) */}
-                <div className="mt-12 mb-24 flex justify-center">
-                    <button 
-                        onClick={handleResetData}
-                        className="text-xs text-gray-600 hover:text-red-400 flex items-center gap-1 transition-colors border border-white/5 px-3 py-1.5 rounded-full hover:border-red-400/30"
-                    >
-                        <RotateCcw size={12} /> 重置所有行程至預設值
-                    </button>
-                </div>
+                {/* 空白的底部填充，確保最後一個項目不會被 Floating Button 擋住 */}
+                <div className="h-24"></div>
             </div>
 
             {/* 4. Floating Action Button */}
